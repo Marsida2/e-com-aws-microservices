@@ -1,6 +1,6 @@
 import { ddbClient } from "./ddbClient";
 import { ScanCommand, GetItemCommand, PutItemCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
-import { uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 const getProduct = async (productId) => {
     try {
