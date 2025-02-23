@@ -84,6 +84,8 @@ const deleteProduct = async (productId) => {
 export async function handler(event) {
     console.log("request hello: ", JSON.stringify(event, undefined, 2));
 
+    let body = {};
+
     try {
         switch (event.httpMethod) {
           case "GET":

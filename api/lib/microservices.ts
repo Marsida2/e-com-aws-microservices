@@ -27,7 +27,7 @@ export class Microservices extends Construct {
             },
             environment: {
               PRIMARY_KEY: 'id',
-              DYNAMO_TABLE_NAME: productTable.tableName
+              DYNAMODB_TABLE_NAME: productTable.tableName
             },
             runtime: Runtime.NODEJS_22_X
           }
