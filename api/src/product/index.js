@@ -1,6 +1,5 @@
-import { eventNames } from "process";
 import { ddbClient } from "./ddbClient";
-import { ScanCommand, GetItemCommand, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { ScanCommand, GetItemCommand, PutItemCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
 import { uuidv4 } from 'uuid';
 
 const getProduct = async (productId) => {
@@ -43,7 +42,6 @@ const getAllProducts = async () => {
 
 const createProduct = async (event) => {
     try {
-
         const product = JSON.parse(event.body);
         const productId = uuidv4();
         product.id = productId;
@@ -63,27 +61,64 @@ const createProduct = async (event) => {
     }
 };
 
+const deleteProduct = async (productId) => {  
+    try {
+      const params = {
+        TableName: process.env.DYNAMODB_TABLE_NAME,
+        Key: { id: {
+            S: productId
+            } 
+        },
+      };
+  
+      const response = await ddbClient.send(new DeleteItemCommand(params));
+      console.log(response);
+      return response;
+    } catch(e) {
+      console.error(e);
+      throw e;
+    }
+  }
+
 
 export async function handler(event) {
     console.log("request hello: ", JSON.stringify(event, undefined, 2));
 
-    switch (event.httpMethod) {
-        case "GET":
-            if (event.pathParameters != null)
-                body = await getProduct(event.pathParameters.id);
+    try {
+        switch (event.httpMethod) {
+          case "GET":
+        if (event.pathParameters != null)
+              body = await getProduct(event.pathParameters.id);
             else
-                body = await getAllProducts();
+              body = await getAllProducts();
             break;
-        case "POST":
+          case "POST":
             body = await createProduct(event);
             break;
-        default:
+          case "DELETE":
+            body = await deleteProduct(event.pathParameters.id);
+            break;
+          default:
             throw new Error(`Unsupported route: ${event.httpMethod}`);
-    }
-
-    return {
-        statusCode: 200,
-        headers: { "Content-Type": "text/plain" },
-        body: `Hello from path: ${event.path}`
+        }
+  
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            message: `Successfully finished operation: "${event.httpMethod}"`,
+            body: body
+          })
+        };
+  
+    } catch (e) {
+        console.error(e);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+            message: "Operation failed!",
+            errorMsg: e.message,
+            errorStack: e.stack,
+            })
+        };
     }
 }
