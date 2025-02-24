@@ -1,22 +1,18 @@
 import { ddbClient } from "./ddbClient";
 import { ScanCommand, GetItemCommand, PutItemCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 
 const getProduct = async (productId) => {
     try {
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME,
-            Key: { 
-                id: {
-                    S: productId
-                }
-            }
+            Key: marshall({ id: productId })
         }
 
         const { Item } = await ddbClient.send(new GetItemCommand(params));
         console.log(Item);
-        return Item ? Item : {};
-
+        return (Item) ? unmarshall(Item) : {};
     } catch(e) {
         console.error(e);
         throw e;
@@ -27,12 +23,11 @@ const getAllProducts = async () => {
     try {
         const params = {
             TableName: process.env.DYNAMODB_TABLE_NAME,
-            
         }
 
         const { Items } = await ddbClient.send(new ScanCommand(params));
         console.log(Items);
-        return Items ? Items : {};
+        return (Items) ? Items.map((item) => unmarshall(item)) : {};
 
     } catch(e) {
         console.error(e);
@@ -48,7 +43,7 @@ const createProduct = async (event) => {
         
         const input = {
             TableName: process.env.DYNAMODB_TABLE_NAME,
-            Item: product ? product : {}
+            Item: marshall(product || {})
         }
 
         const response = await ddbClient.send(new PutItemCommand(input));
@@ -65,10 +60,7 @@ const deleteProduct = async (productId) => {
     try {
       const params = {
         TableName: process.env.DYNAMODB_TABLE_NAME,
-        Key: { id: {
-            S: productId
-            } 
-        },
+        Key: marshall({ id: productId }),
       };
   
       const response = await ddbClient.send(new DeleteItemCommand(params));
@@ -88,6 +80,16 @@ export async function handler(event) {
 
     try {
         switch (event.httpMethod) {
+          case "OPTIONS": 
+            return {
+                statusCode: 200,
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
+                    "Access-Control-Allow-Headers": "Content-Type,Authorization"
+                },
+                body: {}
+            };
           case "GET":
         if (event.pathParameters != null)
               body = await getProduct(event.pathParameters.id);
@@ -106,9 +108,14 @@ export async function handler(event) {
   
         return {
           statusCode: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization"
+        },
           body: JSON.stringify({
             message: `Successfully finished operation: "${event.httpMethod}"`,
-            body: body
+            data: body
           })
         };
   
@@ -116,6 +123,9 @@ export async function handler(event) {
         console.error(e);
         return {
             statusCode: 500,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+          },
             body: JSON.stringify({
             message: "Operation failed!",
             errorMsg: e.message,
